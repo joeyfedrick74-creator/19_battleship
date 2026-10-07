@@ -10,46 +10,112 @@ class Battleship:
         self._setup()
 
     def _setup(self):
-        self.player.place_ship({(1, 1), (1, 2), (1, 3)})
-        self.enemy.place_ship({(2, 2), (2, 3), (2, 4)})
+        # All internal coordinates use zero-based (row, col).
+        self.player.place_ship({
+            (0, 0),
+            (0, 1),
+            (0, 2)
+        })
+
+        self.player.place_ship({
+            (3, 3),
+            (4, 3)
+        })
+
+        self.enemy.place_ship({
+            (1, 1),
+            (1, 2),
+            (1, 3)
+        })
+
+        self.enemy.place_ship({
+            (4, 4),
+            (5, 4)
+        })
 
     def show(self):
+        remaining = len(
+            self.enemy.ships - self.enemy.hit_cells
+        )
+
         print("\nYour shots are coordinates like 2,3.")
-        print("Ship cells remaining:", len(self.enemy.ships - self.player.shots))
+        print("Enemy ship cells remaining:", remaining)
+        print("Enter q to quit.")
 
     def run(self):
         print("Battleship")
+
+        last_ai_hit = None
+
         while True:
             self.show()
+
             raw = input("> ").strip().lower()
+
             if raw == "q":
+                print("Game quit.")
                 return
+
             try:
                 r, c = map(int, raw.split(","))
                 pos = (r - 1, c - 1)
-            except ValueError:
+
+            except (ValueError, TypeError):
                 print("Use row,col.")
                 continue
-            if not (0 <= pos[0] < Board.SIZE and 0 <= pos[1] < Board.SIZE):
+
+            if not (
+                0 <= pos[0] < Board.SIZE
+                and 0 <= pos[1] < Board.SIZE
+            ):
                 print("Outside board.")
                 continue
-            if pos in self.player.shots:
+
+            if pos in self.enemy.shots:
                 print("Already fired there.")
                 continue
-            print("HIT!" if self.enemy.fire(pos) else "MISS!")
+
+            result = self.enemy.fire(pos)
+
+            if result["hit"]:
+                print("HIT!")
+
+                if result["sunk"]:
+                    print("You sank a ship.")
+
+            else:
+                print("MISS!")
+
             if self.enemy.all_sunk():
                 print("You sank the fleet.")
                 return
 
-            ai_pos = self.ai.choose()
+            # AI chooses an internal tuple coordinate.
+            ai_pos = self.ai.choose(last_ai_hit)
 
-            # representation consistent through the whole flow.
-            try:
-                ar, ac = map(int, ai_pos.split(","))
-                player_pos = (ar, ac)
-            except ValueError:
-                player_pos = None
-            if player_pos is not None:
-                print("AI fired at", ai_pos)
-                if player_pos in self.player.ships:
-                    print("AI scored a hit.")
+            if ai_pos is None:
+                print("AI has no remaining shots.")
+                return
+
+            ai_display = f"{ai_pos[0] + 1},{ai_pos[1] + 1}"
+
+            print("AI fired at", ai_display)
+
+            # Actual AI shot happens here.
+            ai_result = self.player.fire(ai_pos)
+
+            if ai_result["hit"]:
+                print("AI scored a hit.")
+
+                if ai_result["sunk"]:
+                    print("AI sank one of your ships.")
+
+                last_ai_hit = ai_pos
+
+            else:
+                print("AI missed.")
+                last_ai_hit = None
+
+            if self.player.all_sunk():
+                print("The AI sank your fleet.")
+                return
