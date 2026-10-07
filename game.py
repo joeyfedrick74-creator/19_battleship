@@ -109,8 +109,9 @@ class Battleship:
 
                 if ai_result["sunk"]:
                     print("AI sank one of your ships.")
-
-                last_ai_hit = ai_pos
+                    last_ai_hit = None
+                else:
+                    last_ai_hit = ai_pos
 
             else:
                 print("AI missed.")
